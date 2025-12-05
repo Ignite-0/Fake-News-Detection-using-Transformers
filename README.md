@@ -77,6 +77,3 @@ Weight Decay: 0.01
 Optimizer: AdamW
 LR Scheduler: Linear with warmup
 ```
-
-
-Made with ❤️ for advancing fake news detection research
