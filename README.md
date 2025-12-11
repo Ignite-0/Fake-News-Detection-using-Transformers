@@ -9,71 +9,94 @@
 
 ---
 
-##  Table of Contents
+Fake News Detection using Transformers (RoBERTa)
 
-- [Overview](#overview)
-- [Dataset](#dataset)
-- [Model Architecture](#model-architecture)
+This project fine-tunes a RoBERTa-base model for fake news detection using the WELFake dataset.
+The workflow includes preprocessing, subsampling, tokenization, training with class-weighted loss, and evaluation using multiple metrics.
 
+Dataset Usage
 
----
+Dataset: WELFake (HuggingFace)
 
-##  Overview
+Total samples: 72,134
 
-This project implements a state-of-the-art fake news detection system using:
-- **Base Model:** RoBERTa-base (125M parameters)
-- **Fine-tuning:** WELFake dataset with artifact mitigation
-- **Techniques:** Class weighting, proper train-test splitting
-- **Deployment:** Available on HuggingFace Hub
+Used in this project: Only 1% (≈ 721 samples)
+This was intentionally done to reduce training time, but it also creates major limitations described below.
 
-### Why This Project?
+⚠ Limitations
+1. Only 1% of the data was used
 
-Fake news detection is crucial for maintaining information integrity. This project addresses:
-1. **Data Leakage Prevention** - Strict train-test separation
-2. **Class Imbalance** - Uses weighted loss for balanced learning
-3. **Real-world Applicability** - Interactive prediction interface
+Using such a small subset makes the model prone to:
 
----
+Overfitting
 
-##  Dataset
+Poor generalization
 
-### WELFake Dataset
-- **Source:** [HuggingFace - davanstrien/WELFake](https://huggingface.co/datasets/davanstrien/WELFake)
-- **Total Samples:** 72,134 articles
-- **After Deduplication:** 62,719 unique articles
-- **Classes:** 
-  - REAL (0): 34,616 articles (55.5%)
-  - FAKE (1): 27,791 articles (44.5%)
+Unrealistically high metrics
 
-### Data Split
-```
-Training:   37,443 samples (60%)
-Validation: 12,482 samples (20%)
-Test:       12,482 samples (20%)
-```
+Sensitivity to noise in the tiny sample
 
----
+2. Duplicates were NOT removed
 
-##  Model Architecture
+The WELFake dataset is known to contain many duplicate or near-duplicate articles.
+Since duplicates were not cleaned, this may cause:
 
-### Base Model: RoBERTa-base
+Train–test contamination
+(Same article appears in train and test → inflated scores)
 
-```python
-Model: roberta-base
-Parameters: 124,647,170
-Architecture: Transformer (12 layers, 768 hidden, 12 attention heads)
-Max Sequence Length: 512 tokens
-Task: Binary Sequence Classification
-```
+Incorrectly high F1 and accuracy due to repeated text
 
-### Fine-tuning Configuration
+3. Artifact Leakage
 
-```python
-Training Epochs: 4
-Batch Size: 16 (train), 32 (eval)
-Learning Rate: 2e-5
-Warmup Ratio: 0.1
-Weight Decay: 0.01
-Optimizer: AdamW
-LR Scheduler: Linear with warmup
-```
+The dataset contains stylistic and formatting patterns that make fake vs. real news easy to predict without true semantic understanding.
+
+Examples of possible artifacts:
+
+Specific punctuation patterns
+
+Title formatting differences
+
+Zero-shot label imbalance cues
+
+Consistent writing style differences between sources
+
+Since the model trained on raw text without feature purification, there is a high chance it learned dataset-specific artifacts rather than true fake news reasoning.
+
+Model & Training
+
+Model: RoBERTa-base
+
+Token length: 512
+
+Loss function: Weighted CrossEntropy
+
+Training split: 60 / 20 / 20
+
+Epochs: 4
+
+GPU: CUDA (if available)
+
+The model achieved high test-set performance, but due to the limitations above, results are not reliable for real-world use.
+
+Results (on 1% subsampled data)
+Metric	Score
+Accuracy	~0.96
+F1 (Fake)	~0.96
+F1 (Real)	~0.96
+PR-AUC	~0.99
+
+⚠ These results are almost certainly inflated due to tiny dataset size, duplicates, and artifact leakage.
+
+Recommendation
+
+For a realistic model:
+
+Use the full dataset
+
+Remove duplicates & near duplicates
+
+Shuffle and stratify properly
+
+Consider cross-dataset generalization tests
+
+Avoid leakage by carefully preprocessing titles, metadata, and URLs
